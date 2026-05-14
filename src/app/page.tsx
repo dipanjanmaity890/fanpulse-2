@@ -10,57 +10,9 @@ import { WinProbabilityGraph } from '@/components/WinProbability';
 import { AdvancedPredictionCard } from '@/components/AdvancedPredictionCard';
 import { FanPulseReactions } from '@/components/FanPulseReactions';
 import { IPLMatchState } from '@/lib/cricapi';
-
-function LiveChat({ username, onMessagesChange }: { username: string; onMessagesChange?: (msgs: string[]) => void }) {
-  const [messages, setMessages] = useState<{id: number, user: string, text: string}[]>([
-    { id: 1, user: 'CricketFan1', text: 'Kohli is on fire! 🔥' },
-    { id: 2, user: 'AussieRules', text: 'Starc needs a wicket here.' },
-    { id: 3, user: 'FanBoy2024', text: 'Predictions locked, let\'s go!' }
-  ]);
-  const [input, setInput] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const sendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    const updated = [...messages, { id: Date.now(), user: username, text: input }];
-    setMessages(updated);
-    onMessagesChange?.(updated.map(m => m.text));
-    setInput('');
-  };
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  return (
-    <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '400px' }}>
-      <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>💬 Live Fan Chat</h3>
-      
-      <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingRight: '0.5rem' }}>
-        {messages.map(msg => (
-          <div key={msg.id} style={{ background: msg.user === username ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)', padding: '0.75rem', borderRadius: '12px', borderBottomLeftRadius: msg.user === username ? '12px' : '0', borderBottomRightRadius: msg.user === username ? '0' : '12px' }}>
-            <div style={{ fontSize: '0.75rem', color: msg.user === username ? 'var(--primary)' : 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>{msg.user}</div>
-            <div style={{ fontSize: '0.95rem' }}>{msg.text}</div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <form onSubmit={sendMessage} style={{ display: 'flex', gap: '0.5rem' }}>
-        <input 
-          type="text" 
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Cheer for your team..." 
-          style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.3)', color: 'white', outline: 'none' }}
-        />
-        <button type="submit" className="btn" style={{ padding: '0.75rem 1rem' }}>Send</button>
-      </form>
-    </div>
-  );
-}
-
+import { LiveChat } from '@/components/LiveChat';
+import { AIFantasyAdvisor } from '@/components/AIFantasyAdvisor';
+import { MatchScheduleWidget } from '@/components/MatchScheduleWidget';
 
 function StreaksPanel() {
   return (
@@ -169,6 +121,9 @@ export default function GamificationDashboard() {
         </div>
       </header>
 
+      {/* Match Schedule Strip */}
+      <MatchScheduleWidget />
+
       {/* Full layout: 3 columns on large screens */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '2rem' }}>
 
@@ -190,6 +145,9 @@ export default function GamificationDashboard() {
         {/* Right Column — Gamification Sidebar */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <StreaksPanel />
+
+          {/* Tier 1: Fantasy AI Advisor */}
+          <AIFantasyAdvisor match={liveMatch} />
 
           {/* Tier 1: Fan Mood Meter */}
           <FanMoodMeter messages={chatMessages} />

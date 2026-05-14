@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { LiveAlertsToast } from "@/components/LiveAlertsToast";
 
 export const metadata: Metadata = {
   title: "FanPulse 2.0 | 2nd Innings Challenge",
@@ -23,8 +24,10 @@ export default function RootLayout({
             <Link href="/" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Dashboard</Link>
             <Link href="/leaderboard" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Leaderboard</Link>
             <Link href="/rewards" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Rewards</Link>
+            <Link href="/profile" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Profile</Link>
           </nav>
           {children}
+          <LiveAlertsToast />
         </AuthProvider>
       </body>
     </html>
