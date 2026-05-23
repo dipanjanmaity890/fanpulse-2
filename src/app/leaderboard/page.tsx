@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { CrownBadge, FloatingCrown, CrownTakeoverPopup } from '@/components/CrownCelebration';
 import { useAuth } from '@/context/AuthContext';
+import { db, ref, onValue, set } from '@/lib/firebase';
+import { get, child } from 'firebase/database';
 
 // ── Data ──────────────────────────────────────────────────────────────────
 const GLOBAL_DATA = [
@@ -165,39 +167,60 @@ function InviteModal({ friends, onAdd, onClose }: {
 
 // ── Main Page ─────────────────────────────────────────────────────────────
 export default function LeaderboardPage() {
-  const { username } = useAuth();
+  const { user, username, userScore } = useAuth();
   const me = username || 'You';
 
   const [activeTab, setActiveTab]   = useState<'global' | 'friends'>('global');
   const [crownPopup, setCrownPopup] = useState(false);
-  const [userScore, setUserScore]   = useState(38500);
-  const [globalData]                = useState(GLOBAL_DATA);
+  const [globalData, setGlobalData] = useState<Player[]>([]);
   const [friends, setFriends]       = useState<Player[]>(INITIAL_FRIENDS);
   const [isLeader, setIsLeader]     = useState(false);
   const [showInvite, setShowInvite] = useState(false);
 
-  const prevLeader = globalData[0]?.name;
+  // Fetch real users from Firebase RTDB
+  React.useEffect(() => {
+    const usersRef = ref(db, 'users');
+    const unsub = onValue(usersRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const usersObj = snapshot.val();
+        const usersArray: Player[] = Object.keys(usersObj).map(key => ({
+          name: usersObj[key].username,
+          points: usersObj[key].points || 0
+        }));
+        setGlobalData(usersArray);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const prevLeader = globalData.sort((a,b) => b.points - a.points)[0]?.name;
 
   // Build sorted boards
   const buildBoard = (base: Player[]) =>
-    [...base, { name: me, points: userScore }]
+    [...base]
       .sort((a, b) => b.points - a.points)
       .map((u, i) => ({ ...u, rank: i + 1, isMe: u.name === me }));
 
   const globalBoard  = buildBoard(globalData);
-  const friendsBoard = buildBoard(friends);
+  const friendsBoard = buildBoard(friends.find(f => f.name === me) ? friends : [...friends, { name: me, points: userScore }]);
   const activeBoard  = activeTab === 'global' ? globalBoard : friendsBoard;
 
   const userRank = activeBoard.findIndex(u => u.isMe) + 1;
-  const gapToTop = activeBoard[0].points - userScore;
+  const gapToTop = activeBoard[0]?.points ? activeBoard[0].points - userScore : 0;
 
-  const claimPoints = () => {
+  const claimPoints = async () => {
+    if (!user) {
+      alert("Please sign in to earn points!");
+      return;
+    }
     const bonus = Math.floor(Math.random() * 2500) + 500;
     const newScore = userScore + bonus;
-    setUserScore(newScore);
+    
+    // Update score in Firebase
+    await set(ref(db, `users/${user.uid}/points`), newScore);
 
-    const updated = buildBoard(activeTab === 'global' ? globalData : friends);
-    if (updated[0].name === me && !isLeader) {
+    const updated = buildBoard(activeTab === 'global' ? globalData.map(u => u.name === me ? { ...u, points: newScore } : u) : friends);
+    if (updated[0]?.name === me && !isLeader) {
       setIsLeader(true);
       setCrownPopup(true);
     }

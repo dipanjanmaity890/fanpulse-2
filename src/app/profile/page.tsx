@@ -23,7 +23,7 @@ const BADGES = [
 ];
 
 export default function ProfilePage() {
-  const { user, username, loading } = useAuth();
+  const { user, username, userScore, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<'stats' | 'badges'>('stats');
 
   if (loading) {
@@ -109,7 +109,7 @@ export default function ProfilePage() {
           
           <div className="glass-card" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
             <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#f59e0b', marginBottom: '0.5rem' }}>
-              {USER_STATS.points.toLocaleString()}
+              {userScore.toLocaleString()}
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Total FanCoins 🪙</div>
           </div>

@@ -2,11 +2,13 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
-import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged } from '@/lib/firebase';
+import { auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, db, ref, onValue, set } from '@/lib/firebase';
+import { get, child } from 'firebase/database';
 
 interface AuthContextType {
   user: User | null;
   username: string;
+  userScore: number;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
@@ -15,6 +17,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   username: '',
+  userScore: 0,
   loading: true,
   signInWithGoogle: async () => {},
   logout: async () => {},
@@ -28,14 +31,50 @@ function extractUsername(email: string | null): string {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [userScore, setUserScore] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    let unsubDB: (() => void) | undefined;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
-      setLoading(false);
+      
+      if (firebaseUser) {
+        const username = extractUsername(firebaseUser.email);
+        const userRef = ref(db, `users/${firebaseUser.uid}`);
+        
+        // Check if user exists, if not initialize them
+        const snapshot = await get(child(ref(db), `users/${firebaseUser.uid}`));
+        if (!snapshot.exists()) {
+          await set(userRef, {
+            username,
+            points: 1000,
+            email: firebaseUser.email,
+          });
+          setUserScore(1000);
+        } else {
+          setUserScore(snapshot.val().points || 0);
+        }
+
+        // Subscribe to real-time score updates
+        unsubDB = onValue(userRef, (snap) => {
+          if (snap.exists()) {
+            setUserScore(snap.val().points || 0);
+          }
+        });
+        setLoading(false);
+      } else {
+        if (unsubDB) unsubDB();
+        setUserScore(0);
+        setLoading(false);
+      }
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubDB) unsubDB();
+    };
   }, []);
 
   const signInWithGoogle = async () => {
@@ -50,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user,
       username: extractUsername(user?.email ?? null),
+      userScore,
       loading,
       signInWithGoogle,
       logout,

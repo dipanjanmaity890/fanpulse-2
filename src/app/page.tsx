@@ -13,6 +13,7 @@ import { IPLMatchState } from '@/lib/cricapi';
 import { LiveChat } from '@/components/LiveChat';
 import { AIFantasyAdvisor } from '@/components/AIFantasyAdvisor';
 import { MatchScheduleWidget } from '@/components/MatchScheduleWidget';
+import { db, ref, set } from '@/lib/firebase';
 
 function StreaksPanel() {
   return (
@@ -76,8 +77,8 @@ function LoginScreen({ onSignIn }: { onSignIn: () => void }) {
 }
 
 // --- Main Dashboard ---
-export default function GamificationDashboard() {
-  const { user, username, loading, signInWithGoogle, logout } = useAuth();
+export default function FanPulseDashboard() {
+  const { user, username, userScore, loading, signInWithGoogle, logout } = useAuth();
   const [chatMessages, setChatMessages] = useState<string[]>([
     'Kohli is on fire! 🔥', 'Starc needs a wicket here.', "Predictions locked, let's go!"
   ]);
@@ -99,8 +100,13 @@ export default function GamificationDashboard() {
 
   const avatarLetter = username.charAt(0).toUpperCase();
 
-  const handlePredictionResult = (prediction: string, outcome: string, won: boolean) => {
+  const handlePredictionResult = async (prediction: string, outcome: string, won: boolean) => {
     setLastPrediction({ prediction, outcome, won });
+    if (won && user) {
+      const bonus = 250; // standard prediction win points
+      const newScore = userScore + bonus;
+      await set(ref(db, `users/${user.uid}/points`), newScore);
+    }
   };
 
   return (
@@ -111,7 +117,9 @@ export default function GamificationDashboard() {
           <p style={{ color: 'var(--text-muted)' }}>Welcome back, <strong style={{ color: 'white' }}>{username}</strong>!</p>
         </div>
         <div className="user-profile" style={{ gap: '1rem' }}>
-          <div className="coins">🪙 2,450</div>
+          <div className="coins" style={{ transition: 'all 0.3s ease' }}>
+            🪙 {userScore.toLocaleString()}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div className="avatar" title={user.email ?? ''}>{avatarLetter}</div>
             <button onClick={logout} className="btn btn-outline" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
